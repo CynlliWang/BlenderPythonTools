@@ -1,0 +1,56 @@
+import bpy
+import bmesh
+from mathutils import Vector
+
+def select_edges_with_crease():
+    # 获取当前选中的对象
+    obj = bpy.context.object
+    if obj is None or obj.type != 'MESH':
+        print("请选中一个网格对象！")
+        return
+
+    # 确保当前模式为 Object 模式
+    if bpy.context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    # 获取网格数据
+    mesh = obj.data
+
+    # 检查网格是否具有 edge_creases 属性
+    if not hasattr(mesh, 'edge_creases'):
+        print("该网格没有 edge_creases 属性！")
+        return
+
+    # 获取所有边的 Crease 值
+    edge_creases = mesh.edge_creases.data
+
+    # 存储所有 Crease 值大于 0 的边
+    edges_with_crease = []
+
+    # 遍历所有边并检查 Crease 值
+    for i, crease in enumerate(edge_creases):
+        if crease.value > 0:
+            edges_with_crease.append(i)  # 将符合条件的边索引添加到列表
+
+    if not edges_with_crease:
+        print("没有找到 Crease 值大于 0 的边！")
+    else:
+        print(f"找到 {len(edges_with_crease)} 条 Crease 值大于 0 的边，正在选择它们...")
+      
+        
+        # 进入编辑模式，选择这些边
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='DESELECT')  # 取消所有选择
+
+        # 选择符合条件的边
+        bpy.ops.object.mode_set(mode='OBJECT')  # 进入对象模式
+        for edge_index in edges_with_crease:
+            obj.data.edges[edge_index].select = True
+
+        # 切换回编辑模式以查看结果
+        bpy.ops.object.mode_set(mode='EDIT')
+
+
+
+# 调用函数
+select_edges_with_crease()
