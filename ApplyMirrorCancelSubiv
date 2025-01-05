@@ -1,0 +1,15 @@
+import bpy
+
+# Iterate over all selected objects
+for obj in bpy.context.selected_objects:
+    # Ensure the object is of type 'MESH'
+    if obj.type == 'MESH':
+        # Iterate over all modifiers on the object
+        for mod in obj.modifiers:
+            # Apply Mirror Modifier
+            if mod.type == 'MIRROR':
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.modifier_apply(modifier=mod.name)
+            # Remove Subdivision Surface Modifier
+            elif mod.type == 'SUBSURF':
+                obj.modifiers.remove(mod)
