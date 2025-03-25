@@ -1,0 +1,61 @@
+import bpy
+import json
+
+def convert_value(value):
+    """转换 Blender 数据类型，确保可以被 JSON 处理"""
+    if isinstance(value, bpy.types.bpy_prop_array):
+        return list(value)  # 把 `bpy_prop_array` 转成 `list`
+    elif isinstance(value, (int, float, str, bool)):
+        return value  # 直接支持 JSON
+    else:
+        return str(value)  # 其他数据类型转换成字符串
+
+def get_shader_nodes(material, node_tree=None, level=0):
+    """递归获取 Shader 节点数据，支持 Shader Group 嵌套"""
+    if node_tree is None:
+        node_tree = material.node_tree
+
+    nodes_data = {}
+
+    for node in node_tree.nodes:
+        node_info = {
+            "type": node.bl_idname,
+            "inputs": {},
+            "outputs": [o.name for o in node.outputs],
+            "location": list(node.location),
+            "level": level
+        }
+
+        # 处理输入 socket，防止 `NodeSocketVirtual` 报错
+        for i in node.inputs:
+            try:
+                node_info["inputs"][i.name] = convert_value(i.default_value)
+            except AttributeError:
+                node_info["inputs"][i.name] = "N/A"
+
+        # 如果是 Shader Group，递归解析
+        if node.bl_idname == "ShaderNodeGroup" and node.node_tree:
+            node_info["group_nodes"] = get_shader_nodes(material, node.node_tree, level + 1)
+
+        nodes_data[node.name] = node_info
+
+    return nodes_data
+
+# 获取当前选中的物体
+obj = bpy.context.object
+
+if obj and obj.active_material:
+    material = obj.active_material
+    shader_data = get_shader_nodes(material)
+
+    # 输出到 Blender 文本编辑器
+    text_block = bpy.data.texts.get("ShaderNodesExport")
+    if not text_block:
+        text_block = bpy.data.texts.new("ShaderNodesExport")
+
+    text_block.clear()
+    text_block.write(json.dumps(shader_data, indent=4))
+
+    print("Shader 节点数据已写入 Blender 文本编辑器！")
+else:
+    print("未找到 Shader！")
