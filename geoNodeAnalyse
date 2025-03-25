@@ -1,0 +1,41 @@
+import bpy
+import json
+
+# 获取当前选中物体的几何节点
+obj = bpy.context.object
+if obj and obj.modifiers:
+    for mod in obj.modifiers:
+        if mod.type == 'NODES':
+            node_group = mod.node_group
+            break
+else:
+    node_group = None
+
+if node_group:
+    data = {}
+    for node in node_group.nodes:
+        data[node.name] = {
+            "type": node.bl_idname,
+            "inputs": {},
+            "outputs": [o.name for o in node.outputs],
+            "location": list(node.location),
+        }
+
+        # 处理输入 socket，避免 'NodeSocketVirtual' 报错
+        for i in node.inputs:
+            try:
+                data[node.name]["inputs"][i.name] = i.default_value
+            except AttributeError:
+                data[node.name]["inputs"][i.name] = "N/A"
+
+    # 把 JSON 数据写入 Blender 文本编辑器
+    text_block = bpy.data.texts.get("GeoNodesExport")
+    if not text_block:
+        text_block = bpy.data.texts.new("GeoNodesExport")
+
+    text_block.clear()
+    text_block.write(json.dumps(data, indent=4))
+
+    print("Geo Nodes 数据已写入 Blender 文本编辑器！")
+else:
+    print("未找到几何节点！")
